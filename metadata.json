@@ -1,0 +1,5 @@
+{
+  "name": "Veritas AI",
+  "description": "Veritas AI is an application that uses Gemini with Google Search grounding to verify the factual accuracy of statements in real-time, providing explanations and source links.",
+  "requestFramePermissions": []
+}
