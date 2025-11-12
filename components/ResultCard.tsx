@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { FactCheckResult, Verdict } from '../types';
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, LinkIcon, ClipboardIcon, ClipboardCheckIcon, ShareIcon } from './icons';
@@ -54,18 +55,21 @@ const ResultCard: React.FC<ResultCardProps> = ({ result, originalClaim }) => {
     setIsProcessingShare(true);
 
     try {
+        // Increase canvas resolution for sharper images, and set a solid background color.
+        const scale = window.devicePixelRatio || 2;
         const canvas = await html2canvas(cardRef.current, { 
           useCORS: true,
           logging: false,
-          backgroundColor: null, // Use element's background
+          backgroundColor: '#ffffff', // Explicitly set background to white to prevent transparency issues
+          scale: scale,
         });
-        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
 
         if (!blob) {
             throw new Error('Could not create image blob.');
         }
 
-        const file = new File([blob], 'veritas-ai-fact-check.png', { type: 'image/png' });
+        const file = new File([blob], 'veritas-ai-fact-check.jpg', { type: 'image/jpeg' });
         const shareData = {
             title: 'Veritas AI: Fact-Check Result',
             text: `Veritas AI fact-check for the claim: "${originalClaim}"`,
@@ -77,7 +81,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ result, originalClaim }) => {
         } else {
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'veritas-ai-fact-check.png';
+            link.download = 'veritas-ai-fact-check.jpg';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

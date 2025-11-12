@@ -1,20 +1,22 @@
-I built a tool to fight misinformation in real-time, and you can see how it's done.
 
-Fighting the spread of false information is a huge challenge. I wanted to see if I could build a simple, powerful web app to help.
+I built a tool to fight misinformation in real-time. Here's a look under the hood.
 
-Introducing **Veritas AI**—an app that uses the Google Gemini API to instantly analyze any statement, provide a verdict (True, False, or Mixed), and back it up with a detailed explanation and verifiable sources from Google Search.
+In a world of information overload, getting to the truth quickly is a superpower. That's why I created **Veritas AI**—a web app that uses the Google Gemini API to instantly fact-check any claim.
 
-**How it works:**
-The magic is in the Gemini API's `googleSearch` grounding tool. With a single line of configuration, the AI's response is grounded in up-to-the-minute web data, ensuring the facts are current and sourced.
+I named it Veritas AI—from the Latin word for 'truth'—because I wanted to build a tool that brings clarity and verifiable facts to the forefront.
 
-**Key Features:**
-- ✅ Instant, AI-powered fact-checking.
-- 🔗 Verifiable sources for every claim.
-- 🗂️ A persistent history sidebar to track your checks.
-- 📱 A fully responsive design for desktop and mobile.
+**How it works (the tech bits):**
+The app's core is the Gemini API with **Search Grounding**. This ensures every response is based on up-to-the-minute web data, not just the model's static training knowledge.
 
-This project was a fantastic exercise in leveraging generative AI for a practical, impactful purpose. The developer experience with the `@google/genai` SDK and the power of grounding made it possible to build a robust tool quickly.
+The biggest technical challenge was getting a structured, predictable response from the AI. My solution was **prompt engineering**. I crafted a specific prompt that forces Gemini to return a clean `VERDICT: TRUE/FALSE/MIXED` line first, followed by its detailed explanation. This makes parsing the response on the client-side robust and reliable.
 
-What do you think about using AI to promote media literacy?
+**The Tech Stack:**
+- **AI**: Google Gemini (`gemini-2.5-flash`) with Search Grounding
+- **Frontend**: A snappy, fully responsive UI built with React, TypeScript, and Tailwind CSS.
+- **Cool Feature**: I even added a "Share" button that uses `html2canvas` and the Web Share API to export the result card as an image directly from the browser.
 
-#GoogleGemini #GenAI #FactChecking #Misinformation #React #WebDevelopment #AIForGood #Developer #UIUX
+This project was a fantastic deep-dive into building practical AI-powered tools. The `@google/genai` SDK is a pleasure to work with, and the power of grounding is a game-changer for applications requiring factual accuracy.
+
+What are the most interesting applications of grounded AI models you've seen or thought of?
+
+#GoogleGemini #GenAI #FactChecking #Misinformation #React #TypeScript #WebDevelopment #AIForGood #Developer #UIUX #PromptEngineering
