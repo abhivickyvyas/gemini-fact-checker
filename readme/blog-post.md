@@ -1,4 +1,3 @@
-
 # Architecting Truth: Building a Real-Time Fact-Checker with Gemini & Search Grounding
 
 ![Veritas AI Banner](veritas-banner.svg)
@@ -67,10 +66,9 @@ graph TD
 
 ## 3. User Flow Strategy
 
-To ensure a smooth user experience (UX) while handling asynchronous AI operations, the flow is split into two distinct interactions.
+To ensure a smooth user experience (UX) while handling asynchronous AI operations, the flow focuses on handling the state transitions from "User Input" to "Verified Result".
 
 ### Main Fact-Check Loop
-The core loop handles the state transitions from "User Input" to "Verified Result".
 
 ```mermaid
 graph LR
@@ -94,21 +92,6 @@ graph LR
     style M fill:#F44336,stroke:#333,stroke-width:2px,color:white;
 ```
 
-### History Management
-Since we are serverless, we use the browser's `localStorage` as a lightweight database.
-
-```mermaid
-graph LR
-    N[User views history sidebar] --> O{User clicks a past item};
-    O --> P[Load claim and result into main view];
-    P --> Q[End Interaction];
-    N --> R{User clicks 'Clear History'};
-    R --> S[Remove all items from history and UI];
-    S --> Q;
-
-    style Q fill:#F44336,stroke:#333,stroke-width:2px,color:white;
-```
-
 ---
 
 ## 4. Sequence of Operations (LLD)
@@ -122,9 +105,9 @@ The interaction is more complex than a standard chatbot. We aren't just sending 
 5.  **The Synthesis**: It combines the search results with its internal knowledge to form a verdict.
 6.  **The Parsing**: The client app receives raw text and metadata, which must be parsed into a structured UI card.
 
-### New Fact-Check Request
+### API Handshake
 
-This diagram shows the process when a user submits a new claim to be fact-checked.
+This diagram shows the precise process when a user submits a new claim to be fact-checked.
 
 ```mermaid
 sequenceDiagram
@@ -146,22 +129,6 @@ sequenceDiagram
     ReactApp->>+LocalStorage: Save new result to history
     LocalStorage-->>-ReactApp: 
     ReactApp-->>-User: Display ResultCard and update history sidebar
-```
-
-### Loading from History
-
-This diagram shows the simple, client-side process when a user clicks on a previously checked item in the history sidebar.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant ReactApp as React App (UI)
-    participant LocalStorage as Browser Local Storage
-
-    User->>+ReactApp: Clicks on a history item in the sidebar
-    Note over ReactApp: No API call is made.
-    ReactApp->>ReactApp: Set state from clicked item (claim, result)
-    ReactApp-->>-User: Display existing ResultCard instantly
 ```
 
 ---
@@ -213,6 +180,31 @@ export interface GroundingChunk {
 ```
 
 The app dynamically maps these chunks to the UI, creating a transparent "Sources" section. This effectively creates a bibliography for every generated answer, solving the "trust me bro" problem inherent in standard LLMs.
+
+---
+
+## 7. Beyond the API: Engineering the UI
+
+While the AI provides the logic, the Frontend provides the value. One key feature of Veritas AI is the ability to share results.
+
+Since the browser cannot natively "screenshot" a specific DOM node to the clipboard, I integrated `html2canvas`.
+
+1.  **Ref**: A React `useRef` captures the `ResultCard` DOM element.
+2.  **Canvas**: `html2canvas` rasterizes the DOM node into a canvas.
+3.  **High DPI Support**: I explicitly set the `scale` parameter to `window.devicePixelRatio` (usually 2 or 3 on mobile) to ensure the generated image is crisp, not blurry.
+4.  **Web Share API**: If on mobile, `navigator.share()` triggers the native OS sharing sheet. If on desktop, it falls back to a file download.
+
+This turns a text-based result into a viral, image-based social artifact.
+
+---
+
+## 8. Future Roadmap
+
+While the current version works perfectly as a portfolio demo, a production version would require:
+
+*   **Backend Proxy**: Moving the API calls to a Node.js/Edge function to hide the API Key and implement rate limiting.
+*   **User Accounts**: Syncing history across devices using a database (e.g., Firebase or Supabase) instead of `localStorage`.
+*   **Deep Research Mode**: Implementing a "multi-step" agent that performs multiple searches for highly complex or ambiguous claims.
 
 ---
 
