@@ -5,7 +5,7 @@
 </p>
 
 <h3 align="center">
-  <a href="readme/blog-post.md"><strong>📖 READ THE ENGINEERING CASE STUDY »</strong></a>
+  <a href="readme/Engineering%20Case%20Study.md"><strong>📖 READ THE ENGINEERING CASE STUDY »</strong></a>
 </h3>
 <p align="center">
   (Architecture, HLD, LLD & Prompt Engineering Strategy)
@@ -43,7 +43,7 @@
 
 I wrote a detailed breakdown of how this system handles **Prompt Engineering**, **State Management**, and **Search Grounding**.
 
-👉 **[Read the full Architecture Breakdown](readme/blog-post.md)**
+👉 **[Read the full Architecture Breakdown](readme/Engineering%20Case%20Study.md)**
 
 ---
 

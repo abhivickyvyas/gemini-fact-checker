@@ -1,0 +1,1 @@
+> **Note:** This file has been removed. Please see the [Engineering Case Study](Engineering%20Case%20Study.md).
