@@ -14,13 +14,16 @@ The goal was to create an application that delivers not just an answer, but a tr
 
 ---
 
-## 1. High-Level Architecture
+## 1. System Design
 
-Veritas AI follows a clean **Client-Server** model, but with a twist: it utilizes a "Serverless" approach where the client communicates directly with the AI provider. 
+To ensure the application was robust and scalable, I approached the development with a formal design process.
+
+### High-Level Architecture (HLD)
+Veritas AI follows a clean **Client-Server** model, but with a twist: it utilizes a "Serverless" approach where the client communicates directly with the AI provider. You can view the full [High-Level Design document here](./HLD.md).
 
 By leveraging the `@google/genai` SDK directly in the browser, we eliminate the need for a complex middle-tier for this specific use case, reducing latency and infrastructure complexity.
 
-Here is the high-level component hierarchy, showing how the User, the React App, and Google's services interact:
+Here is the high-level component hierarchy:
 
 ```mermaid
 graph TD
@@ -47,10 +50,8 @@ graph TD
     style F fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
-**Key Architectural Decisions:**
--   **React (Frontend)**: Chosen for its component-based architecture, making it easy to manage the state of the input, loading spinners, and result cards.
--   **Direct SDK Usage**: We use the `GoogleGenAI` client on the frontend. *Note: In a production app with user login, you would likely proxy this through a backend to secure your API key, but for a demo or internal tool, this reduces complexity.*
--   **Search Grounding**: This is the critical architectural component. The LLM is not just predicting text; it is actively querying a search engine index to validate its predictions.
+### Low-Level Design (LLD)
+The application is structured as a tree of React components (`App` -> `ResultCard`, `History`), utilizing TypeScript interfaces for strict type safety on the API responses. The prompt parsing logic—converting raw text into a `FactCheckResult` object—is the core logic component. Detailed component structures and interface definitions can be found in the [Low-Level Design document](./LLD.md).
 
 ---
 
@@ -137,22 +138,6 @@ sequenceDiagram
     ReactApp->>+LocalStorage: Save new result to history
     LocalStorage-->>-ReactApp: 
     ReactApp-->>-User: Display ResultCard and update history sidebar
-```
-
-### History Interaction
-
-We also need to consider how data is retrieved. This is a much simpler, synchronous sequence:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant ReactApp as React App (UI)
-    participant LocalStorage as Browser Local Storage
-
-    User->>+ReactApp: Clicks on a history item in the sidebar
-    Note over ReactApp: No API call is made.
-    ReactApp->>ReactApp: Set state from clicked item (claim, result)
-    ReactApp-->>-User: Display existing ResultCard instantly
 ```
 
 ---
