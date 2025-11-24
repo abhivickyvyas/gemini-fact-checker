@@ -1,5 +1,9 @@
 # Veritas AI
 
+<p align="center">
+  <img src="readme/veritas-banner.svg" alt="Veritas AI Banner" width="100%" />
+</p>
+
 Veritas AI is an application that uses the Gemini API with Google Search grounding to verify the factual accuracy of statements in real-time, providing a clear verdict, a detailed explanation, and verifiable source links.
 
 ## Features
@@ -52,6 +56,7 @@ To run this project locally, follow these steps:
 ```
 .
 ├── readme/
+│   ├── veritas-banner.svg   # Project Banner
 │   ├── architecture.md      # C4-style architecture diagram
 │   ├── blog-post.md         # A blog post for developers
 │   ├── flow.md              # User flow diagram

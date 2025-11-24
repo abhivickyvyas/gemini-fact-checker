@@ -1,6 +1,8 @@
 
 # Architecting Truth: Building a Real-Time Fact-Checker with Gemini & Search Grounding
 
+![Veritas AI Banner](veritas-banner.svg)
+
 *A technical deep-dive into building "Veritas AI" — a serverless, grounded AI application.*
 
 In an era saturated with information, the latency between a false claim spreading and a fact-check publishing is often too long. As engineers, we have new tools to bridge this gap. This weekend, I built **Veritas AI**, a real-time fact-checking application that leverages Google's Gemini API with **Search Grounding** to verify claims instantly.

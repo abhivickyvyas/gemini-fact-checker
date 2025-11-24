@@ -1,0 +1,19 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" rx="24" fill="url(#bg)"/>
+  <path d="M0 400V300C200 350 400 250 600 300C800 350 1000 250 1200 300V400H0Z" fill="#1E293B" fill-opacity="0.5"/>
+  <g transform="translate(140, 80)">
+     <path d="M100 0L200 40V110C200 170 160 220 100 240C40 220 0 170 0 110V40L100 0Z" fill="#2563EB"/>
+     <path d="M100 0L200 40V110C200 170 160 220 100 240" fill="#1D4ED8" fill-opacity="0.2"/>
+     <path d="M60 110L90 140L150 70" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(400, 210)">
+    <text fill="white" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="120" letter-spacing="-0.02em">Veritas AI</text>
+    <text y="60" fill="#94A3B8" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="40" letter-spacing="0.05em">REAL-TIME FACT-CHECKING ENGINE</text>
+  </g>
+</svg>
