@@ -1,22 +1,19 @@
-**Can AI actually handle the truth?** 🕵️‍♂️
+**I built a lie detector for the internet.** 🕵️‍♂️
 
-I spent the weekend building **Veritas AI** to find out. It's a real-time fact-checking engine that doesn't just "guess"—it researches.
+LLMs are great at being creative, but terrible at being factual. They hallucinate. They make things up.
 
-Most LLMs hallucinate. They are creative engines, not databases. To fix this, I used **Google Search Grounding** with the Gemini API.
+So I built **Veritas AI** to fix that.
 
-Instead of predicting the next word, the model:
-✅ **Tools**: Recognizes it needs verification.
-🔍 **Searches**: Performs live Google searches.
-🧠 **Synthesizes**: Combines its knowledge with real citations.
-🔗 **Attributes**: Links specific claims to specific URLs.
+It uses **Google Gemini** with **Search Grounding** to cross-reference every generated response against live web results. It doesn't just guess—it cites its sources.
 
-I built the frontend in **React + TypeScript** with a serverless architecture to keep it fast and lightweight.
+**The Tech Stack:**
+⚡ **Frontend**: React 19 + TypeScript (Serverless architecture)
+🧠 **AI**: Gemini 2.5 Flash
+🔍 **Grounding**: Google Search Tool
+🎨 **UI**: Tailwind CSS
 
-I wrote a full engineering breakdown covering:
-*   High-Level Design (HLD) & Low-Level Design (LLD)
-*   Prompt engineering strategies for deterministic UI
-*   How to handle grounding metadata
+I wrote a full engineering deep dive on the architecture, prompt strategies, and how to handle real-time grounding data.
 
-👇 **Read the full deep dive below!**
+👇 **Check out the code and the case study below.**
 
-#GoogleGemini #SoftwareEngineering #React #TypeScript #GenAI #SystemDesign #WebDevelopment
+#SoftwareEngineering #GenAI #React #TypeScript #GoogleGemini #WebDev #BuildPublic
