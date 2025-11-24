@@ -1,67 +1,71 @@
 
-# Building Veritas AI: A Technical Deep-Dive into Real-Time Fact-Checking with Gemini
+# Architecting Truth: Building a Real-Time Fact-Checker with Gemini & Search Grounding
 
-In an era saturated with information, the ability to quickly distinguish fact from fiction is more critical than ever. This challenge inspired me to build **Veritas AI**, a real-time fact-checking web application. 
+*A technical deep-dive into building "Veritas AI" — a serverless, grounded AI application.*
 
-In this post, I'll take you on a technical deep-dive into how I built it. We will cover the high-level architecture, the specific user flow, the API sequence, and the prompt engineering required to make it work.
+In an era saturated with information, the latency between a false claim spreading and a fact-check publishing is often too long. As engineers, we have new tools to bridge this gap. This weekend, I built **Veritas AI**, a real-time fact-checking application that leverages Google's Gemini API with **Search Grounding** to verify claims instantly.
 
-## The Goal
-
-The goal was to create an application that delivers not just an answer, but a trustworthy, verifiable result. This meant providing three key components for every query:
-1.  A clear, unambiguous **verdict**: Is the claim true, false, or more nuanced?
-2.  A detailed **explanation** of the reasoning behind the verdict.
-3.  A list of verifiable **sources** to build trust and encourage further research.
+This article breaks down the **High-Level Design (HLD)**, **Low-Level Design (LLD)**, and the engineering challenges of "grounding" LLMs.
 
 ---
 
-## 1. System Design
+## 1. The Engineering Challenge
 
-To ensure the application was robust and scalable, I approached the development with a formal design process.
+Standard LLMs are excellent creative engines but unreliable fact databases. They suffer from two main issues for this use case:
+1.  **Hallucination**: They can confidently invent facts.
+2.  **Knowledge Cutoffs**: They don't know what happened five minutes ago.
 
-### High-Level Architecture (HLD)
-Veritas AI follows a clean **Client-Server** model, but with a twist: it utilizes a "Serverless" approach where the client communicates directly with the AI provider. You can view the full [High-Level Design document here](./HLD.md).
+To build a reliable fact-checker, we need **Retrieval-Augmented Generation (RAG)**. Typically, RAG requires building a vector database, managing embeddings, and maintaining a retrieval pipeline.
 
-By leveraging the `@google/genai` SDK directly in the browser, we eliminate the need for a complex middle-tier for this specific use case, reducing latency and infrastructure complexity.
+However, Google's **Search Grounding** simplifies this by allowing the model to "use" Google Search as a tool during inference. It fetches live results and—crucially—attributes parts of its response to those specific URLs.
 
-Here is the high-level component hierarchy:
+---
+
+## 2. High-Level Architecture (HLD)
+
+For this implementation, I chose a **Client-Side / Serverless** architecture. By using the `@google/genai` SDK directly in the browser, we reduce infrastructure complexity and latency.
+
+*Note: In a production environment with paid quotas, you would move the API calls to a proxy server to secure your API keys. For this architectural demo, a direct client-implementation suffices.*
+
+### System Diagram
 
 ```mermaid
 graph TD
-    subgraph "User's Browser"
-        A[User] --> B{React Web App};
-        B --> C[UI Components];
-        B --> D[Gemini Service];
+    subgraph "Client (Browser)"
+        UI[React UI Layer]
+        Logic[Business Logic / State]
+        Storage[Local Storage (History)]
     end
 
-    subgraph "Google Cloud"
-        E[Gemini API];
-        F[Google Search];
+    subgraph "Google Cloud AI"
+        Gateway[Gemini API Gateway]
+        Model[Gemini 2.5 Flash]
+        Search[Google Search Engine]
     end
 
-    D -- "Sends prompt with claim" --> E;
-    E -- "Grounds the request" --> F;
-    F -- "Returns search results" --> E;
-    E -- "Generates response (verdict, explanation, sources)" --> D;
-    D -- "Returns parsed result" --> B;
-    C -- "Displays result to user" --> A;
-
-    style B fill:#61DAFB,stroke:#333,stroke-width:2px;
-    style E fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff;
-    style F fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
+    UI --> Logic
+    Logic -->|Prompt + Config| Gateway
+    Gateway --> Model
+    Model -->|Tool Call| Search
+    Search -->|Context/Results| Model
+    Model -->|Grounded Response| Logic
+    Logic -->|Render| UI
+    Logic -->|Persist| Storage
 ```
 
-### Low-Level Design (LLD)
-The application is structured as a tree of React components (`App` -> `ResultCard`, `History`), utilizing TypeScript interfaces for strict type safety on the API responses. The prompt parsing logic—converting raw text into a `FactCheckResult` object—is the core logic component. Detailed component structures and interface definitions can be found in the [Low-Level Design document](./LLD.md).
+### Key Design Decisions
+1.  **Direct Integration**: Eliminating the middle-tier reduces the time-to-first-byte (TTFB), which is critical because the Search Grounding step adds intrinsic latency (approx. 2-3 seconds).
+2.  **Local Persistence**: To respect user privacy and avoid database costs, fact-check history is persisted in the browser's `localStorage`.
+3.  **Strict Typing**: TypeScript interfaces mirror the expected structure of the grounded response, ensuring the UI doesn't crash if the model returns unexpected metadata.
 
 ---
 
-## 2. The User Flow
+## 3. User Flow Strategy
 
-To ensure a smooth user experience, I mapped out the application flow. I separated the main logic from the history interaction to keep things clear.
+To ensure a smooth user experience (UX) while handling asynchronous AI operations, the flow is split into two distinct interactions.
 
-### Main Fact-Check Flow
-
-This diagram visualizes the decision logic from the moment the user enters a claim to when they receive a result.
+### Main Fact-Check Loop
+The core loop handles the state transitions from "User Input" to "Verified Result".
 
 ```mermaid
 graph TD
@@ -85,9 +89,8 @@ graph TD
     style M fill:#F44336,stroke:#333,stroke-width:2px,color:white;
 ```
 
-### History Interaction Flow
-
-This separate flow handles how users interact with their saved results in the sidebar.
+### History Management
+Since we are serverless, we use the browser's `localStorage` as a lightweight database.
 
 ```mermaid
 graph TD
@@ -101,22 +104,18 @@ graph TD
     style Q fill:#F44336,stroke:#333,stroke-width:2px,color:white;
 ```
 
-**UX Considerations:**
-1.  **Input Validation**: We prevent empty calls (See node `D`) to save API quota.
-2.  **Loading States**: Fact-checking with grounding takes slightly longer than standard text generation (2-4 seconds). A clear loading spinner (`E`) is essential.
-3.  **History**: We immediately persist the result to `localStorage` and update the sidebar (`L`) so users don't lose their research.
-
 ---
 
-## 3. The API Sequence
+## 4. Sequence of Operations (LLD)
 
-The most complex part of the application is the handshake between the React App, the Service Layer, and the Gemini API. 
+The interaction is more complex than a standard chatbot. We aren't just sending text; we are configuring a "tool use" session.
 
-The `geminiService.ts` file acts as the bridge. It handles prompt construction, error catching, and response parsing.
-
-### New Fact-Check Request
-
-This details exactly what happens when the user clicks "Check":
+1.  **The Trigger**: User submits a claim (e.g., *"The Eiffel Tower grows in summer"*).
+2.  **The Config**: The app initializes the Gemini client with the `googleSearch` tool enabled.
+3.  **The Thinking**: The model analyzes the prompt. It recognizes it needs external verification.
+4.  **The Grounding**: It queries Google Search.
+5.  **The Synthesis**: It combines the search results with its internal knowledge to form a verdict.
+6.  **The Parsing**: The client app receives raw text and metadata, which must be parsed into a structured UI card.
 
 ```mermaid
 sequenceDiagram
@@ -142,47 +141,60 @@ sequenceDiagram
 
 ---
 
-## 4. The Code Implementation
+## 5. Prompt Engineering for Deterministic UI
 
-### The Prompt Strategy
-The most critical part of interacting with an LLM is the prompt. To ensure a consistent and parsable response, I engineered a prompt that explicitly instructs the model on the desired output format.
+One of the hardest parts of integrating LLMs into UI is getting **structured data**. For Veritas AI, I needed a specific format to render the "True", "False", or "Mixed" badges correctly.
 
+Instead of relying on JSON mode (which can sometimes be verbose or fickle with tool use), I used a **Prefix Enforcement** strategy.
+
+**The Prompt:**
 ```typescript
-// from services/geminiService.ts
 const prompt = `Analyze the following statement for its factual accuracy. 
 Begin your response with one of the following verdicts on a single line: 
 "VERDICT: TRUE", "VERDICT: FALSE", or "VERDICT: MIXED". 
 After the verdict, provide a concise but detailed explanation...`;
 ```
 
-By forcing the model to output `VERDICT: X` first, we can easily parse the result in JavaScript using basic string manipulation, rather than hoping for a valid JSON object which can sometimes be flaky with smaller models.
-
-### Enabling Search Grounding
-To build a *real-time* fact-checker, the model needs access to the live web. Activating Gemini's Google Search grounding feature is surprisingly simple in the config:
+**The Parsing Logic:**
+By strictly enforcing the first line, the frontend logic becomes robust:
 
 ```typescript
-// from services/geminiService.ts
-const response = await ai.models.generateContent({
-  model: "gemini-2.5-flash",
-  contents: prompt,
-  config: {
-    // This single line connects the model to live Google Search results
-    tools: [{googleSearch: {}}],
-  },
-});
+const fullText = response.text;
+const lines = fullText.split('\n');
+// We know line 0 (or the first non-empty line) MUST be the verdict
+const verdictLine = lines.find(line => line.toUpperCase().startsWith('VERDICT:'));
+
+if (verdictLine.includes('TRUE')) return Verdict.TRUE;
+// ... handle others
 ```
 
-### Parsing Sources
-The API returns a specific `groundingMetadata` object. We map this to our UI type:
+This hybrid approach—structured prompt engineering combined with resilient client-side parsing—provides the reliability of an API with the flexibility of an LLM.
+
+---
+
+## 6. Handling Grounding Metadata
+
+The real magic happens in the `groundingMetadata`. The API returns a list of "Chunks" (sources).
+
+My `types.ts` defines this contract:
 
 ```typescript
-const sources = (response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[]) || [];
+export interface GroundingChunk {
+  web: {
+    uri: string;
+    title: string;
+  };
+}
 ```
+
+The app dynamically maps these chunks to the UI, creating a transparent "Sources" section. This effectively creates a bibliography for every generated answer, solving the "trust me bro" problem inherent in standard LLMs.
+
+---
 
 ## Conclusion
 
-Building Veritas AI was a powerful demonstration of how modern AI tools like the Gemini API can be combined with a robust frontend framework like React. 
+Building Veritas AI demonstrated that the gap between "Generative AI" and "Verifiable AI" is closing fast. With tools like Search Grounding, we can build applications that don't just speak—they research.
 
-By mapping out the **Architecture (Top-Down)** to understand the system components, and the **User Flow (Top-Down)** to understand the experience, we were able to write clean, efficient code that solves a real-world problem.
+The shift from *predicting the next token* to *synthesizing retrieved facts* is the next major step for frontend engineers working with AI.
 
-#AI #GoogleGemini #FactChecking #WebDevelopment #React #TypeScript
+**Tech Stack:** React 19, TypeScript, Tailwind CSS, Google Gemini API (`gemini-2.5-flash`).
