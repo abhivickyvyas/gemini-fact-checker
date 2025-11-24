@@ -8,7 +8,7 @@ This document outlines the typical user flows within the Veritas AI application.
 This diagram visualizes the decision logic from the moment the user enters a claim to when they receive a result.
 
 ```mermaid
-graph TD
+graph LR
     A[Start] --> B{User enters a claim};
     B --> C{User clicks 'Check'};
     C --> D{Is the claim empty?};
@@ -31,10 +31,10 @@ graph TD
 
 ## 2. History Interaction Flow
 
-This diagram handles how users interact with their saved results in the sidebar.
+This diagram handles how users interact with the saved results in the sidebar.
 
 ```mermaid
-graph TD
+graph LR
     N[User views history sidebar] --> O{User clicks a past item};
     O --> P[Load claim and result into main view];
     P --> Q[End Interaction];

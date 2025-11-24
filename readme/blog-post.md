@@ -71,7 +71,7 @@ To ensure a smooth user experience (UX) while handling asynchronous AI operation
 The core loop handles the state transitions from "User Input" to "Verified Result".
 
 ```mermaid
-graph TD
+graph LR
     A[Start] --> B{User enters a claim};
     B --> C{User clicks 'Check'};
     C --> D{Is the claim empty?};
@@ -96,7 +96,7 @@ graph TD
 Since we are serverless, we use the browser's `localStorage` as a lightweight database.
 
 ```mermaid
-graph TD
+graph LR
     N[User views history sidebar] --> O{User clicks a past item};
     O --> P[Load claim and result into main view];
     P --> Q[End Interaction];
@@ -120,6 +120,10 @@ The interaction is more complex than a standard chatbot. We aren't just sending 
 5.  **The Synthesis**: It combines the search results with its internal knowledge to form a verdict.
 6.  **The Parsing**: The client app receives raw text and metadata, which must be parsed into a structured UI card.
 
+### New Fact-Check Request
+
+This diagram shows the process when a user submits a new claim to be fact-checked.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -140,6 +144,22 @@ sequenceDiagram
     ReactApp->>+LocalStorage: Save new result to history
     LocalStorage-->>-ReactApp: 
     ReactApp-->>-User: Display ResultCard and update history sidebar
+```
+
+### Loading from History
+
+This diagram shows the simple, client-side process when a user clicks on a previously checked item in the history sidebar.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactApp as React App (UI)
+    participant LocalStorage as Browser Local Storage
+
+    User->>+ReactApp: Clicks on a history item in the sidebar
+    Note over ReactApp: No API call is made.
+    ReactApp->>ReactApp: Set state from clicked item (claim, result)
+    ReactApp-->>-User: Display existing ResultCard instantly
 ```
 
 ---
