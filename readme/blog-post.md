@@ -34,7 +34,7 @@ graph TD
     subgraph "Client (Browser)"
         UI[React UI Layer]
         Logic[Business Logic / State]
-        Storage[Local Storage (History)]
+        Storage[Local Storage -History]
     end
 
     subgraph "Google Cloud AI"
