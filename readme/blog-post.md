@@ -29,28 +29,31 @@ For this implementation, I chose a **Client-Side / Serverless** architecture. By
 
 ### System Diagram
 
+The following diagram illustrates the component interaction within the React application and its integration with Google Cloud services.
+
 ```mermaid
 graph TD
-    subgraph "Client (Browser)"
-        UI[React UI Layer]
-        Logic[Business Logic / State]
-        Storage[Local Storage -History]
+    subgraph "User's Browser"
+        A[User] --> B{React Web App};
+        B --> C[UI Components];
+        B --> D[Gemini Service];
     end
 
-    subgraph "Google Cloud AI"
-        Gateway[Gemini API Gateway]
-        Model[Gemini 2.5 Flash]
-        Search[Google Search Engine]
+    subgraph "Google Cloud"
+        E[Gemini API];
+        F[Google Search];
     end
 
-    UI --> Logic
-    Logic -->|Prompt + Config| Gateway
-    Gateway --> Model
-    Model -->|Tool Call| Search
-    Search -->|Context/Results| Model
-    Model -->|Grounded Response| Logic
-    Logic -->|Render| UI
-    Logic -->|Persist| Storage
+    D -- "Sends prompt with claim" --> E;
+    E -- "Grounds the request" --> F;
+    F -- "Returns search results" --> E;
+    E -- "Generates response (verdict, explanation, sources)" --> D;
+    D -- "Returns parsed result" --> B;
+    C -- "Displays result to user" --> A;
+
+    style B fill:#61DAFB,stroke:#333,stroke-width:2px;
+    style E fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff;
+    style F fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
 ```
 
 ### Key Design Decisions
