@@ -1,37 +1,171 @@
 
-# Building Veritas AI: A Technical Deep-Dive into Real-Time Fact-Checking with Gemini and React
+# Building Veritas AI: A Technical Deep-Dive into Real-Time Fact-Checking with Gemini
 
-In an era saturated with information, the ability to quickly distinguish fact from fiction is more critical than ever. This challenge inspired me to build **Veritas AI**, a real-time fact-checking web application. In this post, I'll take you on a technical deep-dive into how I built it, from prompt engineering and API integration to creating a polished user experience with React.
+In an era saturated with information, the ability to quickly distinguish fact from fiction is more critical than ever. This challenge inspired me to build **Veritas AI**, a real-time fact-checking web application. 
+
+In this post, I'll take you on a technical deep-dive into how I built it. We will cover the high-level architecture, the specific user flow, the API sequence, and the prompt engineering required to make it work.
+
+## The Goal
 
 The goal was to create an application that delivers not just an answer, but a trustworthy, verifiable result. This meant providing three key components for every query:
 1.  A clear, unambiguous **verdict**: Is the claim true, false, or more nuanced?
 2.  A detailed **explanation** of the reasoning behind the verdict.
 3.  A list of verifiable **sources** to build trust and encourage further research.
 
-Let's dive into the code.
+---
 
-### The Core Architecture: Client-Side Power
+## 1. High-Level Architecture
 
-Veritas AI is a single-page application built with **React, TypeScript, and Tailwind CSS**. A key architectural decision was to make it entirely client-side. The app communicates directly from the user's browser to the Google Gemini API, which is made possible by the simplicity and power of the `@google/genai` SDK. This approach simplifies deployment and eliminates the need for a dedicated backend server, making it a lean and efficient solution.
+Veritas AI follows a clean **Client-Server** model, but with a twist: it utilizes a "Serverless" approach where the client communicates directly with the AI provider. 
 
-### The Heart of the App: The `geminiService`
+By leveraging the `@google/genai` SDK directly in the browser, we eliminate the need for a complex middle-tier for this specific use case, reducing latency and infrastructure complexity.
 
-All communication with the Gemini API is encapsulated in a single file, `services/geminiService.ts`. The core of this service is the `factCheckWithGoogleSearch` function.
+Here is the high-level component hierarchy, showing how the User, the React App, and Google's services interact:
 
-#### 1. Prompt Engineering: The Key to Structured Output
+```mermaid
+graph TD
+    subgraph "User's Browser"
+        A[User] --> B{React Web App};
+        B --> C[UI Components];
+        B --> D[Gemini Service];
+    end
 
+    subgraph "Google Cloud"
+        E[Gemini API];
+        F[Google Search];
+    end
+
+    D -- "Sends prompt with claim" --> E;
+    E -- "Grounds the request" --> F;
+    F -- "Returns search results" --> E;
+    E -- "Generates response (verdict, explanation, sources)" --> D;
+    D -- "Returns parsed result" --> B;
+    C -- "Displays result to user" --> A;
+
+    style B fill:#61DAFB,stroke:#333,stroke-width:2px;
+    style E fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff;
+    style F fill:#34A853,stroke:#333,stroke-width:2px,color:#fff;
+```
+
+**Key Architectural Decisions:**
+-   **React (Frontend)**: Chosen for its component-based architecture, making it easy to manage the state of the input, loading spinners, and result cards.
+-   **Direct SDK Usage**: We use the `GoogleGenAI` client on the frontend. *Note: In a production app with user login, you would likely proxy this through a backend to secure your API key, but for a demo or internal tool, this reduces complexity.*
+-   **Search Grounding**: This is the critical architectural component. The LLM is not just predicting text; it is actively querying a search engine index to validate its predictions.
+
+---
+
+## 2. The User Flow
+
+To ensure a smooth user experience, I mapped out the application flow. This diagram visualizes the decision logic from the moment the user starts the app to when they receive a result or view their history.
+
+```mermaid
+graph TD
+    subgraph "Main Fact-Check Flow"
+        A[Start] --> B{User enters a claim};
+        B --> C{User clicks 'Check'};
+        C --> D{Is the claim empty?};
+        D -- Yes --> B;
+        D -- No --> E[Show loading spinner & disable form];
+        E --> F[Send claim to Gemini Service];
+        F --> G{API call to Gemini w/ Search Grounding};
+        G --> H{API call successful?};
+        H -- No --> I[Display error message];
+        H -- Yes --> J[Parse response];
+        J --> K[Extract Verdict, Explanation, and Sources];
+        K --> L[Display Result Card & add to history];
+        I --> M[End];
+        L --> M;
+    end
+
+    subgraph "History Interaction Flow"
+        N[User views history sidebar] --> O{User clicks a past item};
+        O --> P[Load claim and result into main view];
+        P --> Q[End Interaction];
+        N --> R{User clicks 'Clear History'};
+        R --> S[Remove all items from history and UI];
+        S --> Q;
+    end
+
+    style G fill:#f9f,stroke:#333,stroke-width:2px;
+    style A fill:#4CAF50,stroke:#333,stroke-width:2px,color:white;
+    style M fill:#F44336,stroke:#333,stroke-width:2px,color:white;
+    style Q fill:#F44336,stroke:#333,stroke-width:2px,color:white;
+```
+
+**UX Considerations:**
+1.  **Input Validation**: We prevent empty calls (See node `D`) to save API quota.
+2.  **Loading States**: Fact-checking with grounding takes slightly longer than standard text generation (2-4 seconds). A clear loading spinner (`E`) is essential.
+3.  **History**: We immediately persist the result to `localStorage` and update the sidebar (`L`) so users don't lose their research.
+
+---
+
+## 3. The API Sequence
+
+The most complex part of the application is the handshake between the React App, the Service Layer, and the Gemini API. 
+
+The `geminiService.ts` file acts as the bridge. It handles prompt construction, error catching, and response parsing.
+
+### New Fact-Check Request
+
+This sequence details exactly what happens when the user clicks "Check":
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactApp as React App (UI)
+    participant GeminiService as Gemini Service
+    participant GeminiAPI as Gemini API w/ Grounding
+    participant LocalStorage as Browser Local Storage
+
+    User->>+ReactApp: Enters claim and clicks "Check"
+    ReactApp->>ReactApp: Set state (isLoading = true)
+    ReactApp->>+GeminiService: factCheckWithGoogleSearch(claim)
+    GeminiService->>+GeminiAPI: generateContent({ contents: prompt, config: { tools: [...] } })
+    Note right of GeminiAPI: Gemini performs Google Search<br/>to ground the response.
+    GeminiAPI-->>-GeminiService: returns GenerateContentResponse
+    GeminiService->>GeminiService: Parse response text and grounding metadata
+    GeminiService-->>-ReactApp: returns Promise<FactCheckResult>
+    ReactApp->>ReactApp: Set state (isLoading = false, result = data)
+    ReactApp->>+LocalStorage: Save new result to history
+    LocalStorage-->>-ReactApp: 
+    ReactApp-->>-User: Display ResultCard and update history sidebar
+```
+
+### History Interaction
+
+We also need to consider how data is retrieved. This is a much simpler, synchronous sequence:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactApp as React App (UI)
+    participant LocalStorage as Browser Local Storage
+
+    User->>+ReactApp: Clicks on a history item in the sidebar
+    Note over ReactApp: No API call is made.
+    ReactApp->>ReactApp: Set state from clicked item (claim, result)
+    ReactApp-->>-User: Display existing ResultCard instantly
+```
+
+---
+
+## 4. The Code Implementation
+
+### The Prompt Strategy
 The most critical part of interacting with an LLM is the prompt. To ensure a consistent and parsable response, I engineered a prompt that explicitly instructs the model on the desired output format.
 
 ```typescript
 // from services/geminiService.ts
-const prompt = `Analyze the following statement for its factual accuracy. Begin your response with one of the following verdicts on a single line: "VERDICT: TRUE", "VERDICT: FALSE", or "VERDICT: MIXED". After the verdict, provide a concise but detailed explanation of your findings, citing the information you discovered. Statement: "${claim}"`;
+const prompt = `Analyze the following statement for its factual accuracy. 
+Begin your response with one of the following verdicts on a single line: 
+"VERDICT: TRUE", "VERDICT: FALSE", or "VERDICT: MIXED". 
+After the verdict, provide a concise but detailed explanation...`;
 ```
 
-By demanding the `VERDICT:` line first, I turn the LLM's freeform text output into a more structured, predictable API response that my application can reliably parse.
+By forcing the model to output `VERDICT: X` first, we can easily parse the result in JavaScript using basic string manipulation, rather than hoping for a valid JSON object which can sometimes be flaky with smaller models.
 
-#### 2. Gemini with Google Search Grounding
-
-To build a *real-time* fact-checker, the model needs access to the live web. This is where Gemini's Google Search grounding feature becomes a game-changer. Activating it is surprisingly simple:
+### Enabling Search Grounding
+To build a *real-time* fact-checker, the model needs access to the live web. Activating Gemini's Google Search grounding feature is surprisingly simple in the config:
 
 ```typescript
 // from services/geminiService.ts
@@ -44,115 +178,18 @@ const response = await ai.models.generateContent({
   },
 });
 ```
-This tells Gemini to not rely solely on its training data but to perform a live Google search to ground its response in current, verifiable information. The best part? The API response automatically includes the `groundingMetadata`—a structured list of the web pages it used as sources.
 
-#### 3. Parsing the Response
-
-Once the API returns a response, the client-side code has to parse it. The structured prompt makes this much easier.
+### Parsing Sources
+The API returns a specific `groundingMetadata` object. We map this to our UI type:
 
 ```typescript
-// from services/geminiService.ts
-const fullText = response.text;
-const lines = fullText.split('\n');
-const verdictLine = lines.find(line => line.toUpperCase().startsWith('VERDICT:'));
-
-// If no verdict is found, we have a graceful fallback
-if (!verdictLine) {
-  return { /* return the full text with a MIXED verdict */ };
-}
-
-// Extract the verdict and join the remaining lines for the explanation
-const verdictLineIndex = lines.findIndex(line => line.toUpperCase().startsWith('VERDICT:'));
-const explanation = lines.slice(verdictLineIndex + 1).join('\n').trim();
-
-// The sources are already structured for us!
 const sources = (response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[]) || [];
 ```
-This robust parsing logic reliably separates the verdict from the explanation, ensuring the UI can display them correctly.
 
-### Building a Polished Frontend with React
+## Conclusion
 
-The frontend is where the application comes to life.
+Building Veritas AI was a powerful demonstration of how modern AI tools like the Gemini API can be combined with a robust frontend framework like React. 
 
-#### State Management with Hooks
+By mapping out the **Architecture (Top-Down)** to understand the system components, and the **User Flow (Top-Down)** to understand the experience, we were able to write clean, efficient code that solves a real-world problem.
 
-I used React's `useState` hook to manage all the essential application state:
--   `claim`: The user's input text.
--   `isLoading`: A boolean to show/hide the spinner and disable the form during API calls.
--   `result`: An object containing the fact-check result (`verdict`, `explanation`, `sources`).
--   `error`: A string for displaying any API or network errors.
--   `history`: An array of past fact-checks.
-
-The `handleCheckClaim` function orchestrates the API call, wrapping it in a `try...catch...finally` block to manage the `isLoading` and `error` states correctly.
-
-#### Persistent History with `localStorage`
-
-To make the app a practical tool, I added a persistent history feature using `localStorage`. Two `useEffect` hooks handle this: one to load history on component mount, and another to save any new results to storage.
-
-```typescript
-// from App.tsx - Load history from localStorage
-useEffect(() => {
-  try {
-    const storedHistory = localStorage.getItem('factCheckHistory');
-    if (storedHistory) {
-      setHistory(JSON.parse(storedHistory));
-    }
-  } catch (error) {
-    console.error("Failed to parse history from localStorage", error);
-    localStorage.removeItem('factCheckHistory'); // Clear corrupted data
-  }
-}, []);
-
-// from App.tsx - Save history to localStorage whenever it changes
-useEffect(() => {
-  if (history.length > 0) {
-    localStorage.setItem('factCheckHistory', JSON.stringify(history));
-  } else {
-    // Clean up if history is cleared
-    localStorage.removeItem('factCheckHistory');
-  }
-}, [history]);
-```
-
-#### The "Share" Feature: `html2canvas` and the Web Share API
-
-One of my favorite features is the ability to share the result card as an image. This was achieved using the `html2canvas` library, which can capture a DOM element and convert it into a canvas image.
-
-```typescript
-// from components/ResultCard.tsx
-const handleShare = async () => {
-    if (!cardRef.current) return;
-
-    // 1. Convert the component's div to a canvas
-    const canvas = await html2canvas(cardRef.current);
-    // 2. Get a Blob from the canvas
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-    
-    // 3. Create a File object from the Blob
-    const file = new File([blob], 'veritas-ai-fact-check.png', { type: 'image/png' });
-
-    // 4. Use the Web Share API if available, with a download fallback
-    if (navigator.share && navigator.canShare) {
-        await navigator.share({
-            title: 'Veritas AI: Fact-Check Result',
-            files: [file],
-        });
-    } else {
-        // Fallback for desktop browsers
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'veritas-ai-fact-check.png';
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }
-};
-```
-This provides a native sharing experience on mobile devices while offering a seamless download alternative on desktop, enhancing the app's utility.
-
-### Conclusion
-
-Building Veritas AI was a powerful demonstration of how modern AI tools like the Gemini API can be combined with a robust frontend framework like React to create impactful, real-world applications. The key takeaways were the importance of structured prompt engineering, the game-changing power of Search grounding for factual accuracy, and how thoughtful UX can elevate a simple tool into a valuable resource.
-
-The fight against misinformation is ongoing, but with powerful and accessible tools like Gemini, developers are better equipped than ever to contribute to the solution.
-
-#AI #GoogleGemini #FactChecking #WebDevelopment #React #TypeScript #GenAI #Misinformation #TechForGood #UIUX #PromptEngineering
+#AI #GoogleGemini #FactChecking #WebDevelopment #React #TypeScript
